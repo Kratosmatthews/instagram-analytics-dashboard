@@ -2,57 +2,107 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
-base_path = os.path.dirname(os.path.abspath(__file__))
-data_folder = os.path.join(base_path, "..", "data", "raw")
-export_path = r"C:\Users\4KTR3Y\Documents\GitHub\.github\instagram-analytics-project\data\cleaned\instagram_cleaned_data.csv"
+# --- 1. SETUP PATHS ---
+# Using absolute paths to ensure the script runs correctly across different environments
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+DATA_RAW_DIR = os.path.join(BASE_PATH, "..", "data", "raw")
+EXPORT_DIR = r"C:\Users\4KTR3Y\Documents\GitHub\.github\instagram-analytics-project\data\cleaned"
+EXPORT_FILE = os.path.join(EXPORT_DIR, "instagram_cleaned_data.csv")
 
-usage_file = os.path.join(data_folder, "instagram_usage_lifestyle.csv")
-users_file = os.path.join(data_folder, "instagram_users_lifestyle.csv")
+# Defining individual file paths
+USAGE_PATH = os.path.join(DATA_RAW_DIR, "instagram_usage_lifestyle.csv")
+USERS_PATH = os.path.join(DATA_RAW_DIR, "instagram_users_lifestyle.csv")
 
-usage = pd.read_csv(usage_file)
-users = pd.read_csv(users_file)
+def main():
+    # --- 2. DATA ACQUISITION ---
+    print("Loading datasets...")
+    try:
+        usage = pd.read_csv(USAGE_PATH)
+        users = pd.read_csv(USERS_PATH)
+    except FileNotFoundError as e:
+        print(f"Error: Could not find the data files. {e}")
+        return
 
-cols_to_use = users.columns.difference(usage.columns).tolist() + ['user_id']
-df = pd.merge(usage, users[cols_to_use], on="user_id", how="inner")
+    # --- 3. DATA MERGING ---
+    # To prevent duplicate columns, we only take columns from 'users' that aren't in 'usage'
+    cols_to_use = users.columns.difference(usage.columns).tolist()
+    cols_to_use.append('user_id')
 
-df['engagement_score'] = (df['likes_given_per_day'] + 
-                          df['comments_written_per_day'] + 
-                          df['posts_created_per_week'])
+    print("Merging datasets on user_id...")
+    df = pd.merge(usage, users[cols_to_use], on="user_id", how="inner")
 
-df['total_daily_minutes'] = (df['time_on_feed_per_day'] + 
-                             df['time_on_reels_per_day'] + 
-                             df['time_on_explore_per_day'])
+    # --- 4. FEATURE ENGINEERING ---
+    print("Calculating new engagement and usage metrics...")
 
-df['average_usage'] = df['total_daily_minutes'] / 3
+    # Calculate Engagement Score
+    df['engagement_score'] = (
+        df['likes_given_per_day'] + 
+        df['comments_written_per_day'] + 
+        df['posts_created_per_week']
+    )
 
-def create_usage_category(mins):
-    if mins < 30: return 'Low'
-    if mins < 120: return 'Medium'
-    return 'High'
+    # Calculate Total and Average Daily Usage
+    df['total_daily_minutes'] = (
+        df['time_on_feed_per_day'] + 
+        df['time_on_reels_per_day'] + 
+        df['time_on_explore_per_day']
+    )
+    df['average_feature_usage'] = df['total_daily_minutes'] / 3
 
-df['usage_category'] = df['total_daily_minutes'].apply(create_usage_category)
+    # Categorize Usage Levels
+    def get_usage_label(mins):
+        if mins < 30:
+            return 'Low'
+        elif mins < 120:
+            return 'Medium'
+        else:
+            return 'High'
 
-df['age_group'] = pd.cut(df['age'], bins=[0, 18, 25, 35, 50, 100], 
-                         labels=['Under 18', '18-25', '26-35', '36-50', '50+'])
+    df['usage_category'] = df['total_daily_minutes'].apply(get_usage_label)
 
-gender_usage = df.groupby('gender')['total_daily_minutes'].mean()
-age_usage = df.groupby('age_group')['total_daily_minutes'].mean()
-top_users = df.nlargest(10, 'engagement_score')[['user_id', 'engagement_score', 'usage_category']]
+    # Create Age Groups for Analysis
+    age_bins = [0, 18, 25, 35, 50, 100]
+    age_labels = ['Under 18', '18-25', '26-35', '36-50', '50+']
+    df['age_group'] = pd.cut(df['age'], bins=age_bins, labels=age_labels)
 
-print("--- Dataset Statistics ---")
-print(f"Total Rows: {len(df):,}")
-print("\nUsage by Gender:\n", gender_usage)
-print("\nTop 10 Users by Engagement:\n", top_users)
+    # --- 5. DATA AGGREGATION & REPORTING ---
+    print("\n--- DATASET SUMMARY ---")
+    print(f"Total Record Count: {len(df):,}")
 
-os.makedirs(os.path.dirname(export_path), exist_ok=True)
-df.to_csv(export_path, index=False)
-print(f"\n💾 Data exported to: {export_path}")
+    # Grouping by Gender
+    gender_analysis = df.groupby('gender')['total_daily_minutes'].mean().round(2)
+    print("\nMean Daily Usage (Minutes) by Gender:")
+    print(gender_analysis)
 
-plt.figure(figsize=(10, 6))
-gender_usage.plot(kind="bar", color=['#FF9999', '#66B3FF', '#99FF99'])
-plt.title("Average Usage by Gender")
-plt.xlabel("Gender")
-plt.ylabel("Average Minutes Per Day")
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.show()
+    # Identifying Top Performers
+    top_engaged = df.nlargest(10, 'engagement_score')[['user_id', 'engagement_score', 'usage_category']]
+    print("\nTop 10 Users by Engagement Score:")
+    print(top_engaged.to_string(index=False))
+
+    # --- 6. DATA EXPORT ---
+    if not os.path.exists(EXPORT_DIR):
+        os.makedirs(EXPORT_DIR)
+        
+    print(f"\nExporting cleaned data to: {EXPORT_FILE}")
+    df.to_csv(EXPORT_FILE, index=False)
+    print("Export successful.")
+
+    # --- 7. VISUALIZATION ---
+    print("Generating usage visualization...")
+    plt.figure(figsize=(10, 6))
+    
+    # Setting a professional color palette
+    colors = ['#5dade2', '#ec7063', '#58d68d']
+    gender_analysis.plot(kind="bar", color=colors)
+
+    plt.title("Average Instagram Usage by Gender", fontsize=14)
+    plt.xlabel("Gender", fontsize=12)
+    plt.ylabel("Minutes Per Day", fontsize=12)
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+    
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    main()
