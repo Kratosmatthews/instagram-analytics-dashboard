@@ -15,9 +15,9 @@ Due to GitHub's file size limitations, the 1.5M+ row datasets and binary workboo
 
 | Asset | Description | Download Link |
 | :--- | :--- | :--- |
-| **Raw Dataset** | 1.5M row CSV containing user metrics. | [Download Here](INSERT_LINK_HERE) |
-| **Power BI Dashboard** | Interactive `.pbix` file with visual insights. | [Download Here](INSERT_LINK_HERE) |
-| **Excel Analysis** | Spreadsheet containing pivot tables and initial EDA. | [Download Here](INSERT_LINK_HERE) |
+| **Raw Dataset** | 1.5M row CSV containing user metrics. | [Download Here](https://www.kaggle.com/datasets/rockyt07/social-media-user-analysis) |
+| **Power BI Dashboard** | Interactive `.pbix` file with visual insights. | [Download Here](https://drive.google.com/drive/folders/1r-AjetcProhpRTlw5qY1HO5EjoTVzgRP?usp=drive_link) |
+| **Excel Analysis** | Spreadsheet containing pivot tables and initial EDA. | [Download Here](https://drive.google.com/drive/folders/1Qvk8JOwRBH91JX4RJbEric9rKomyddcC?usp=drive_link) |
 
 ## 🛠️ Data Pipeline & Feature Engineering
 The Python analysis script performs the following critical transformations:
